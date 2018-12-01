@@ -30,8 +30,11 @@ String mqttTopicData;
 String mqttTopicDebug;
 char* fullHostname;
 
-const int offset = 154;  // AnalogeRead offset average is around 154 in an empty tank
-const float vcc = 4.70;  // Current voltage as measured from a battery bank and USB port
+const int offset = 156;  // AnalogeRead offset average is around 154 in an empty tank / tank with very little water in it.
+
+const float fullscaleADCvoltage = 3.2; // Wemos D1’s max input on A0
+const int fullscaleADCreading = 1023; // 3.2V on A0 yields analogueRead() of 1023
+const int kPaPerVolt = 400; // 1.6MPa sensor outputs 1600/(4.5-0.5) = 400kPa/V
 const float gravityAcceleration = 9.81;
 float tankHeight;
 float tankCapacity;
@@ -241,8 +244,8 @@ void calculateAndSendWaterLevelMeasurement()
     if (averageMeasurementIntervalCounter >= averageMeasurementTimeIntervals) {
       float averageReadout = averageReadoutOverTime / averageMeasurementTimeIntervals;
 
-      float averageVoltage = averageReadout * vcc / 1024;
-      float pressure = (averageReadout - offset) * vcc / 1024 * 400;
+      float averageVoltage = averageReadout * fullscaleADCvoltage / fullscaleADCreading;
+      float pressure = (averageReadout - offset) * fullscaleADCvoltage / fullscaleADCreading * kPaPerVolt;
   
       if (pressure < 0) {
         pressure = 0;
@@ -285,7 +288,7 @@ void calculateAndSendWaterLevelMeasurement()
     
     measurementIntervalCounter++;
     sendMQTT (mqttTopicStatus, "Publishing update in " + String (calculationCountdownInSeconds));
-    calculationCountdownInSeconds--;
+    calculationCountdownInSeconds -= 2;
 
     delay(2000);
     client.loop();
